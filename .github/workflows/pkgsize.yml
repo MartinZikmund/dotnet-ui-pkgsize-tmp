@@ -3,13 +3,18 @@ name: package-size
 on:
   workflow_dispatch:
     inputs:
+      apple:
+        description: 'JSON array of {tfm, lane} Apple jobs'
+        required: false
+        default: '[{"tfm":"net11","lane":"maui-ios"},{"tfm":"net11","lane":"uno-ios"},{"tfm":"net11","lane":"ava-ios"},{"tfm":"net11","lane":"maui-maccatalyst"},{"tfm":"net11","lane":"uno-macos"},{"tfm":"net11","lane":"ava-macos"},{"tfm":"net10","lane":"maui-ios"},{"tfm":"net10","lane":"uno-ios"},{"tfm":"net10","lane":"ava-ios"},{"tfm":"net10","lane":"maui-maccatalyst"},{"tfm":"net10","lane":"uno-macos"},{"tfm":"net10","lane":"ava-macos"}]'
+      linux:
+        description: 'JSON array of {tfm, fw} Linux jobs ([] for none)'
+        required: false
+        default: '[{"tfm":"net11","fw":"uno"},{"tfm":"net11","fw":"ava"},{"tfm":"net10","fw":"uno"},{"tfm":"net10","fw":"ava"}]'
       only:
         description: 'Optional space-separated case ids to run (default: all)'
         required: false
         default: ''
-  push:
-    branches: [main]
-    paths: ['scripts/**', 'src/**', '.github/workflows/**']
 
 env:
   DOTNET_NOLOGO: '1'
@@ -27,8 +32,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        tfm: [net11, net10]
-        lane: [maui-ios, uno-ios, ava-ios, maui-maccatalyst, uno-macos, ava-macos]
+        include: ${{ fromJSON(github.event.inputs.apple) }}
     env:
       PKG_ROOT: ${{ github.workspace }}
     steps:
@@ -70,14 +74,14 @@ jobs:
           if-no-files-found: warn
 
   linux:
+    if: ${{ github.event.inputs.linux != '[]' }}
     name: ${{ matrix.tfm }} ${{ matrix.fw }} linux nativeaot
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     strategy:
       fail-fast: false
       matrix:
-        tfm: [net11, net10]
-        fw: [uno, ava]
+        include: ${{ fromJSON(github.event.inputs.linux) }}
     env:
       PKG_ROOT: ${{ github.workspace }}
     steps:
