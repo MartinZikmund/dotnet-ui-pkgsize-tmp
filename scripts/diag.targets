@@ -8,19 +8,19 @@
     <PublishReadyToRunCrossgen2ExtraArgs Condition="'$(PublishReadyToRunCrossgen2ExtraArgs)' == ''">$(DiagR2RExtraArgs.Replace('+', ';'))</PublishReadyToRunCrossgen2ExtraArgs>
   </PropertyGroup>
   <ItemGroup Condition="'$(DiagR2RExclude)' != ''">
-    <PublishReadyToRunExclude Include="$(DiagR2RExclude.Replace('+', ';'))" />
+    <PublishReadyToRunExclude Include="$([MSBuild]::Unescape($(DiagR2RExclude.Replace('+', ';'))))" />
   </ItemGroup>
   <ItemGroup Condition="'$(DiagR2RRoots)' != ''">
-    <PublishReadyToRunCompositeRoots Include="$(DiagR2RRoots.Replace('+', ';'))" />
+    <PublishReadyToRunCompositeRoots Include="$([MSBuild]::Unescape($(DiagR2RRoots.Replace('+', ';'))))" />
   </ItemGroup>
   <ItemGroup Condition="'$(DiagR2RPartial)' != ''">
-    <PublishReadyToRunPartialAssemblies Include="$(DiagR2RPartial.Replace('+', ';'))" />
+    <PublishReadyToRunPartialAssemblies Include="$([MSBuild]::Unescape($(DiagR2RPartial.Replace('+', ';'))))" />
   </ItemGroup>
   <ItemGroup Condition="'$(DiagR2RCompositeExclusions)' != ''">
-    <PublishReadyToRunCompositeExclusions Include="$(DiagR2RCompositeExclusions.Replace('+', ';'))" />
+    <PublishReadyToRunCompositeExclusions Include="$([MSBuild]::Unescape($(DiagR2RCompositeExclusions.Replace('+', ';'))))" />
   </ItemGroup>
   <ItemGroup Condition="'$(DiagTrimmerRootAssembly)' != ''">
-    <TrimmerRootAssembly Include="$(DiagTrimmerRootAssembly.Replace('+', ';'))" />
+    <TrimmerRootAssembly Include="$([MSBuild]::Unescape($(DiagTrimmerRootAssembly.Replace('+', ';'))))" />
   </ItemGroup>
   <!-- What Uno.Sdk intends for trimmed apps (Uno.Implicit.Packages.ProjectSystem.targets), applied regardless of when PublishTrimmed gets set -->
   <ItemGroup Condition="'$(DiagDynHints)' == 'true'">
@@ -28,7 +28,7 @@
     <RuntimeHostConfigurationOption Include="Is_System_Dynamic_ExpandoObject_Available" Value="false" Trim="true" />
   </ItemGroup>
   <ItemGroup Condition="'$(DiagTrimmable)' != ''">
-    <TrimmableAssembly Include="$(DiagTrimmable.Replace('+', ';'))" />
+    <TrimmableAssembly Include="$([MSBuild]::Unescape($(DiagTrimmable.Replace('+', ';'))))" />
   </ItemGroup>
   <Target Name="_DiagDumpItems" BeforeTargets="_RunILLink" Condition="'$(DiagDumpFile)' != ''">
     <WriteLinesToFile File="$(DiagDumpFile)" Overwrite="true" Lines="TrimMode=$(TrimMode);PublishTrimmed=$(PublishTrimmed);_LinkMode=$(_LinkMode);PublishReadyToRun=$(PublishReadyToRun);PublishReadyToRunCrossgen2ExtraArgs=$(PublishReadyToRunCrossgen2ExtraArgs);UnoXamlResourcesTrimming=$(UnoXamlResourcesTrimming);-- TrimmerRootDescriptor;@(TrimmerRootDescriptor);-- TrimmerRootAssembly;@(TrimmerRootAssembly->'%(Identity) [%(RootMode)]');-- _TrimmerFeatureSettings;@(_TrimmerFeatureSettings->'%(Identity)=%(Value)');-- RuntimeHostConfigurationOption;@(RuntimeHostConfigurationOption->'%(Identity)=%(Value) trim=%(Trim)');-- ManagedAssemblyToLink;@(ManagedAssemblyToLink->'%(Filename)%(Extension) TrimMode=%(TrimMode) IsTrimmable=%(IsTrimmable)');-- _ExtraTrimmerArgs;$(_ExtraTrimmerArgs)" />
