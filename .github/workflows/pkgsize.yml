@@ -19,6 +19,10 @@ on:
         description: 'Per-build cap in seconds'
         required: false
         default: '1200'
+      sim:
+        description: 'JSON array of {tfm, cases} simulator smoke jobs; cases = lines of "<name> <msbuild args>" separated by | ([] for none)'
+        required: false
+        default: '[]'
 
 env:
   DOTNET_NOLOGO: '1'
@@ -30,6 +34,7 @@ env:
 
 jobs:
   apple:
+    if: ${{ github.event.inputs.apple != '[]' }}
     name: ${{ matrix.tfm }} ${{ matrix.lane }} ${{ matrix.tag }}
     runs-on: xcode-27   # macOS + Xcode 27.x (public preview image); .NET 10.0.4xx/11.0.1xx iOS packs bind the 27.2 SDK
     timeout-minutes: 330
@@ -79,6 +84,48 @@ jobs:
           path: |
             results/
             logs/
+          if-no-files-found: warn
+
+  sim:
+    if: ${{ github.event.inputs.sim != '[]' && github.event.inputs.sim != '' }}
+    name: sim ${{ matrix.tfm }} ${{ matrix.tag }}
+    runs-on: xcode-27
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON(github.event.inputs.sim) }}
+    env:
+      PKG_ROOT: ${{ github.workspace }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Xcode
+        run: |
+          XC=/Applications/Xcode_27.2.app
+          [ -d "$XC" ] || XC=$(ls -d /Applications/Xcode_*.app | grep -E '/Xcode_[0-9][0-9.]*\.app$' | grep -v beta | sort -V | tail -1)
+          echo "DEVELOPER_DIR=$XC/Contents/Developer" >> "$GITHUB_ENV"
+          DEVELOPER_DIR="$XC/Contents/Developer" xcrun simctl list devices available | head -40
+      - name: Install .NET SDK and workloads
+        run: |
+          V=$SDK_NET10; [ "${{ matrix.tfm }}" = net11 ] && V=$SDK_NET11
+          curl -sSL https://dot.net/v1/dotnet-install.sh -o "$RUNNER_TEMP/dotnet-install.sh"
+          bash "$RUNNER_TEMP/dotnet-install.sh" --version "$V" --install-dir "$HOME/dn" --no-path
+          echo "$HOME/dn" >> "$GITHUB_PATH"; echo "DOTNET_ROOT=$HOME/dn" >> "$GITHUB_ENV"
+          export PATH="$HOME/dn:$PATH" DOTNET_ROOT="$HOME/dn"
+          dotnet workload install ios
+      - name: Smoke
+        run: |
+          echo '${{ matrix.cases }}' | tr '|' '\n' | while read -r name args; do
+            [ -z "$name" ] && continue
+            echo "=== $name: $args"
+            bash scripts/sim-smoke.sh "${{ matrix.tfm }}" "$name" $args
+          done
+      - name: Upload results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sim-${{ matrix.tfm }}-${{ matrix.tag }}
+          path: logs/
           if-no-files-found: warn
 
   linux:
