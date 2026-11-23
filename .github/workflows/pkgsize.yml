@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       apple:
-        description: 'JSON array of {tfm, lane[, only, tag]} Apple jobs (only = case ids for that job, tag = artifact suffix)'
+        description: 'JSON array of {tfm, lane[, only, tag, override]} Apple jobs (only = case ids for that job, tag = artifact suffix, override = folder of overrides/<tfm> replacing Uno.WinUI assemblies)'
         required: false
         default: '[{"tfm":"net11","lane":"maui-ios"},{"tfm":"net11","lane":"uno-ios"},{"tfm":"net11","lane":"ava-ios"},{"tfm":"net11","lane":"maui-maccatalyst"},{"tfm":"net11","lane":"uno-macos"},{"tfm":"net11","lane":"ava-macos"},{"tfm":"net10","lane":"maui-ios"},{"tfm":"net10","lane":"uno-ios"},{"tfm":"net10","lane":"ava-ios"},{"tfm":"net10","lane":"maui-maccatalyst"},{"tfm":"net10","lane":"uno-macos"},{"tfm":"net10","lane":"ava-macos"}]'
       linux:
@@ -65,6 +65,8 @@ jobs:
           esac
           dotnet workload list
       - name: Build lane
+        env:
+          UNO_OVERRIDE: ${{ matrix.override }}
         run: |
           lane="${{ matrix.lane }}"; fw="${lane%%-*}"; grp="${lane#*-}"
           bash scripts/mac-run.sh "${{ matrix.tfm }}" "$fw" "$grp" ${{ matrix.only || github.event.inputs.only }}

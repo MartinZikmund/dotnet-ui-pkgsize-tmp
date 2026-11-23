@@ -26,6 +26,27 @@ TFS=""; case "$FW" in uno|maui) TFS="-p:TargetFrameworks=$tf";; esac
 AVA_IOS=""; [ "$FW:$GROUP" = ava:ios ] && AVA_IOS="-p:ValidateSceneManifest=false"
 
 NOSIGN="-p:EnableCodeSigning=false -p:CodesignRequireProvisioningProfile=false"
+
+# Framework override (UNO_OVERRIDE=<folder of overrides/$TFM>): replaces assemblies of the restored Uno.WinUI package
+# with locally built ones, to measure a framework change that has no package yet. The package symbols are dropped,
+# as they no longer match.
+if [ -n "${UNO_OVERRIDE:-}" ] && [ "$FW" = uno ]; then
+  OVR="$ROOT/overrides/$TFM/$UNO_OVERRIDE"; NP="${NUGET_PACKAGES:-$HOME/.nuget/packages}"
+  RID=""; [ "$GROUP" = ios ] && RID="-r ios-arm64"
+  # shellcheck disable=SC2086
+  dotnet restore "$WORK/$SRC/$proj" $TFS $RID -nologo -v:m > "$LOGS/override-restore.log" 2>&1 </dev/null
+  N=0
+  for d in "$NP"/uno.winui/*/lib/"$TV"; do
+    for f in "$OVR"/*.dll; do
+      b=$(basename "$f")
+      if [ -f "$d/$b" ]; then
+        echo "override: $d/$b $(stat -f%z "$d/$b") -> $(stat -f%z "$f")"
+        cp "$f" "$d/$b"; rm -f "$d/${b%.dll}.pdb"; N=$((N + 1))
+      fi
+    done
+  done
+  if [ "$N" -eq 0 ]; then echo "override: nothing replaced, see $LOGS/override-restore.log"; tail -20 "$LOGS/override-restore.log"; exit 1; fi
+fi
 cases_ios() {
   echo "debug|ios-arm64|-c Debug -r ios-arm64 $NOSIGN"
   echo "release-default|ios-arm64|-c Release -r ios-arm64 $NOSIGN"
@@ -97,6 +118,7 @@ macho_bytes() { local total=0 f; while IFS= read -r -d '' f; do if file -b "$f" 
   wait $PUBPID; CODE=$?; kill $WDPID 2>/dev/null; wait $WDPID 2>/dev/null
   SECS=$(( $(date +%s) - START ))
   STATUS=fail; PKG=""; PKGB=0; INST=0; EXTRA=""; ERR=""
+  [ -n "${UNO_OVERRIDE:-}" ] && EXTRA=",\"override\":\"$UNO_OVERRIDE\""
   WL=$(grep -E "warning [A-Z]+[0-9]+" "$LOG" | sed -E 's/ *\[[^]]+\] *$//; s/^ *//' | sort -u)
   NW=$(printf '%s' "$WL" | grep -c . || true)
   ILW=$(printf '%s\n' "$WL" | grep -oE "warning IL[0-9]+" | awk '{print $2}' | sort | uniq -c | awk '{printf "%sx%s ", $2, $1}')
