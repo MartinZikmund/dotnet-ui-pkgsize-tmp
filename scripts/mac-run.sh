@@ -69,6 +69,7 @@ cases_ios_x() {
   echo "x-r2r-excl-theme|ios-arm64|$REL $X -p:DiagR2RExclude=Uno.UI.FluentTheme.dll"
   echo "x-r2r-excl-uno|ios-arm64|$REL $X -p:DiagR2RExclude=Uno.UI.FluentTheme.dll+Uno.UI.dll"
   echo "x-r2r-os|ios-arm64|$REL $X -p:DiagR2RExtraArgs=--Os"
+  echo "x-r2r-roots-app|ios-arm64|$REL $X -p:DiagR2RRoots=UnoApp.dll"
   XT="-p:UnoXamlResourcesTrimming=true -p:TrimMode=full -p:DynamicCodeSupport=false"
   echo "x-combo-a|ios-arm64|$REL $X $XT"
   echo "x-combo-b|ios-arm64|$REL $X $XT -p:DiagR2RExclude=Uno.UI.FluentTheme.dll -p:DiagFontSubset=true"
