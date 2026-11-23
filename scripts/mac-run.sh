@@ -41,6 +41,7 @@ cases_maccatalyst() {
   echo "debug|maccatalyst-arm64|-c Debug -r maccatalyst-arm64 $NOSIGN"
   echo "release-default|maccatalyst-arm64|-c Release -r maccatalyst-arm64 $NOSIGN"
   echo "release-default|maccatalyst-universal|-c Release $NOSIGN"
+echo "release-nor2r|maccatalyst-universal|-c Release -p:PublishReadyToRun=false $NOSIGN"
   echo "mono-interpreter|maccatalyst-arm64|-c Release -r maccatalyst-arm64 -p:UseMonoRuntime=true -p:UseInterpreter=true $NOSIGN"
   echo "mono-aot|maccatalyst-arm64|-c Release -r maccatalyst-arm64 -p:UseMonoRuntime=true $NOSIGN"
   echo "coreclr|maccatalyst-arm64|-c Release -r maccatalyst-arm64 -p:UseMonoRuntime=false $NOSIGN"
