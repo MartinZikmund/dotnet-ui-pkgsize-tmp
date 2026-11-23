@@ -22,6 +22,8 @@ case "$FW:$GROUP" in
 esac
 # single-project heads: only evaluate the TFM being built (keeps global props out of the other heads' restore)
 TFS=""; case "$FW" in uno|maui) TFS="-p:TargetFrameworks=$tf";; esac
+# Avalonia iOS: the template predates the iOS 27 UIScene requirement (MT7199); skip the build-time check so the size can be measured
+AVA_IOS=""; [ "$FW:$GROUP" = ava:ios ] && AVA_IOS="-p:ValidateSceneManifest=false"
 
 NOSIGN="-p:EnableCodeSigning=false -p:CodesignRequireProvisioningProfile=false"
 cases_ios() {
@@ -73,7 +75,9 @@ cases_$GROUP | while IFS='|' read -r ID TARGET ARGS; do
   START=$(date +%s)
   # 20-minute cap per build, so a pathological ILLink/ILC run can't wedge the lane
   # shellcheck disable=SC2086
-  ( dotnet publish "$WORK/$SRC/$proj" -f "$tf" $TFS -o "$OUT" -nologo -v:m -clp:Summary -p:UnoEnableHotReload=false $ARGS >"$LOG" 2>&1 </dev/null ) & PUBPID=$!
+  # Avalonia: enable NativeAOT on the head only (HeadPublishAot in the iOS csproj), not on the class library
+  [ "$FW" = ava ] && [ "$GROUP" = ios ] && ARGS=$(echo "$ARGS" | sed 's/-p:PublishAot=true/-p:HeadPublishAot=true/')
+  ( dotnet publish "$WORK/$SRC/$proj" -f "$tf" $TFS $AVA_IOS -o "$OUT" -nologo -v:m -clp:Summary -p:UnoEnableHotReload=false $ARGS >"$LOG" 2>&1 </dev/null ) & PUBPID=$!
   ( sleep 1200; if kill -0 $PUBPID 2>/dev/null; then echo "TIMEOUT: build killed after 20 minutes" >> "$LOG"; pkill -TERM -f "$WORK/$SRC"; kill -TERM $PUBPID; fi ) & WDPID=$!
   wait $PUBPID; CODE=$?; kill $WDPID 2>/dev/null; wait $WDPID 2>/dev/null
   SECS=$(( $(date +%s) - START ))

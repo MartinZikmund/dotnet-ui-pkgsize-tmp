@@ -13,4 +13,8 @@
   <ItemGroup>
     <ProjectReference Include="..\AvaApp\AvaApp.csproj" />
   </ItemGroup>
+  <!-- package-size harness: enables NativeAOT for this head only (a command-line PublishAot would also reach the class library) -->
+  <PropertyGroup Condition="'$(HeadPublishAot)' == 'true'">
+    <PublishAot>true</PublishAot>
+  </PropertyGroup>
 </Project>
