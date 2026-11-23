@@ -30,7 +30,7 @@ T0=$(python3 -c 'import time; print(time.time())')
 xcrun simctl launch --stdout="$LOGS/$NAME.stdout.txt" --stderr="$LOGS/$NAME.stderr.txt" "$UDID" "$BID" 2>&1 | tee -a "$LOGS/$NAME.result.txt"
 for s in 4 10 25; do
   sleep $(( s == 4 ? 4 : s == 10 ? 6 : 15 ))
-  xcrun simctl io "$UDID" screenshot "$LOGS/$NAME.t$s.png" > /dev/null 2>&1
+  xcrun simctl io "$UDID" screenshot --type=png "$LOGS/$NAME.t$s.png" >> "$LOGS/$NAME.result.txt" 2>&1
   if xcrun simctl spawn "$UDID" launchctl list 2>/dev/null | grep -q "$BID"; then echo "t+${s}s alive" | tee -a "$LOGS/$NAME.result.txt"; else echo "t+${s}s NOT RUNNING" | tee -a "$LOGS/$NAME.result.txt"; fi
 done
 xcrun simctl terminate "$UDID" "$BID" 2>/dev/null
