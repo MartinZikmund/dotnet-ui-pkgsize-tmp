@@ -85,6 +85,9 @@ cases_ios_x() {
   echo "x-naot-xamltrim|ios-arm64|$REL $X -p:PublishAot=true -p:UnoXamlResourcesTrimming=true"
   echo "x-naot-nodesc|ios-arm64|$REL $X -p:PublishAot=true -p:DiagNoUnoDescriptors=true"
   echo "x-naot-xt-emul|ios-arm64|$REL $X -p:PublishAot=true -p:UnoXamlResourcesTrimming=true -p:DiagFeatures=xt-full"
+  echo "x-naot-size|ios-arm64|$REL $X -p:PublishAot=true -p:OptimizationPreference=Size"
+  echo "x-naot-fold|ios-arm64|$REL $X -p:PublishAot=true -p:IlcFoldIdenticalMethodBodies=true"
+  echo "x-naot-xt-size-fold|ios-arm64|$REL $X -p:PublishAot=true -p:UnoXamlResourcesTrimming=true -p:DiagFeatures=xt-full -p:OptimizationPreference=Size -p:IlcFoldIdenticalMethodBodies=true -p:DiagFontSubset=true"
   echo "diag-naot-xt-nodesc|ios-arm64|$REL $X -p:PublishAot=true -p:UnoXamlResourcesTrimming=true -p:DiagFeatures=xt-full -p:DiagNoUnoDescriptors=true -p:IlcGenerateMstatFile=true"
 }
 cases_maccatalyst() {
