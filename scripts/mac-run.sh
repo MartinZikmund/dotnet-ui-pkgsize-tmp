@@ -61,7 +61,14 @@ X="-p:CustomAfterMicrosoftCommonTargets=$ROOT/scripts/diag.targets"
 REL="-c Release -r ios-arm64 $NOSIGN"
 cases_ios_x() {
   echo "diag-r2r|ios-arm64|$REL $X"
-  echo "diag-r2rmap|ios-arm64|$REL $X -p:DiagR2RExtraArgs=--map+--mapcsv"
+  echo "diag-r2rmap|ios-arm64|$REL $X -p:DiagR2RExtraArgs=--mapcsv"
+  echo "diag-xt-full-map|ios-arm64|$REL $X -p:UnoXamlResourcesTrimming=true -p:TrimMode=full -p:DiagR2RExtraArgs=--mapcsv"
+  echo "x-nomedi|ios-arm64|$REL $X -p:UnoDisableMEDITrimmingWorkaround=true"
+  echo "x-dyncode-off|ios-arm64|$REL $X -p:DynamicCodeSupport=false"
+  echo "x-r2r-partial|ios-arm64|$REL $X -p:DiagR2RExtraArgs=--partial"
+  echo "x-r2r-excl-theme|ios-arm64|$REL $X -p:DiagR2RExclude=Uno.UI.FluentTheme.dll"
+  echo "x-r2r-excl-uno|ios-arm64|$REL $X -p:DiagR2RExclude=Uno.UI.FluentTheme.dll+Uno.UI.dll"
+  echo "x-r2r-os|ios-arm64|$REL $X -p:DiagR2RExtraArgs=--Os"
   echo "diag-naot|ios-arm64|$REL $X -p:PublishAot=true -p:IlcGenerateMstatFile=true -p:IlcGenerateDgmlFile=true -p:IlcGenerateMapFile=true"
   echo "x-r2r-off|ios-arm64|$REL $X -p:PublishReadyToRun=false"
   echo "x-xamltrim|ios-arm64|$REL $X -p:UnoXamlResourcesTrimming=true"
@@ -164,7 +171,7 @@ macho_bytes() { local total=0 f; while IFS= read -r -d '' f; do if file -b "$f" 
     fi
     # intermediate outputs (linked IL, descriptors, rsp, ILC mstat/dgml/map), minus native objects and bundle copies
     ( cd "$WORK/$SRC" && find . -path '*/obj/*' -type f -exec stat -f'%z %N' {} + | sort -rn > "$LOGS/$NAME.obj.files.txt"
-      find . -path '*/obj/*' -type f ! -name '*.o' ! -name '*.a' ! -name '*.dylib' ! -name '*.ipa' ! -name '*.zip' ! -path '*.app/*' ! -path '*.dSYM/*' ! -path '*.framework/*' -print0 | tar czf "$LOGS/$NAME.obj.tar.gz" --null -T - ) 2>>"$LOG"
+      find . -path '*/obj/*' -type f ! -name '*.o' ! -name '*.a' ! -name '*.dylib' ! -name '*.ipa' ! -name '*.zip' ! -name '*.map' ! -name '*.pdb' ! -name '*.symbols' ! -path '*.app/*' ! -path '*.dSYM/*' ! -path '*.framework/*' ! -path '*/prepared-assemblies/*' ! -path '*/linked/*' ! -path '*/nativelibraries/*' -print0 | tar czf "$LOGS/$NAME.obj.tar.gz" --null -T - ) 2>>"$LOG"
   ;; esac
   # keep a top-files listing of the template-default Release build for the size analysis
   if [ "$STATUS" = ok ] && [ "$ID" = release-default ]; then
