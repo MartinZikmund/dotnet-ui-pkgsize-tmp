@@ -1,0 +1,5 @@
+<Project>
+  <!-- Imported from Directory.Build.targets, i.e. after the NuGet package targets, so targets defined here win -->
+  <Import Project="diag-nodesc.targets" Condition="'$(DiagNoUnoDescriptors)' == 'true'" />
+  <Import Project="diag-features-$(DiagFeatures).targets" Condition="'$(DiagFeatures)' != ''" />
+</Project>

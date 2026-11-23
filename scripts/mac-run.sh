@@ -75,6 +75,8 @@ cases_ios_x() {
   echo "x-xamltrim-trimfull|ios-arm64|$REL $X -p:UnoXamlResourcesTrimming=true -p:TrimMode=full"
   echo "x-naot-xamltrim|ios-arm64|$REL $X -p:PublishAot=true -p:UnoXamlResourcesTrimming=true"
   echo "x-naot-nodesc|ios-arm64|$REL $X -p:PublishAot=true -p:DiagNoUnoDescriptors=true"
+  echo "x-naot-xt-emul|ios-arm64|$REL $X -p:PublishAot=true -p:UnoXamlResourcesTrimming=true -p:DiagFeatures=xt-full"
+  echo "diag-naot-xt-nodesc|ios-arm64|$REL $X -p:PublishAot=true -p:UnoXamlResourcesTrimming=true -p:DiagFeatures=xt-full -p:DiagNoUnoDescriptors=true -p:IlcGenerateMstatFile=true"
 }
 cases_maccatalyst() {
   echo "debug|maccatalyst-arm64|-c Debug -r maccatalyst-arm64 $NOSIGN"
@@ -118,7 +120,12 @@ macho_bytes() { local total=0 f; while IFS= read -r -d '' f; do if file -b "$f" 
   # shellcheck disable=SC2086
   # Avalonia: enable NativeAOT on the head only (HeadPublishAot in the iOS csproj), not on the class library
   [ "$FW" = ava ] && [ "$GROUP" = ios ] && ARGS=$(echo "$ARGS" | sed 's/-p:PublishAot=true/-p:HeadPublishAot=true/')
-  case "$ID" in diag-*|x-*) ARGS="$ARGS -bl:$LOGS/$NAME.binlog -p:DiagDumpFile=$LOGS/$NAME.props.txt";; esac
+  case "$ID" in diag-*|x-*) ARGS="$ARGS -bl:$LOGS/$NAME.binlog -p:DiagDumpFile=$LOGS/$NAME.props.txt"
+    # target overrides must come after the NuGet package targets: route them through Directory.Build.targets of the work copy
+    printf '<Project>
+  <Import Project="%s/scripts/diag-late.targets" />
+</Project>
+' "$ROOT" > "$WORK/$SRC/Directory.Build.targets";; esac
   case "$ID" in diag-r2r) ARGS="$ARGS -p:DiagLinkMap=$LOGS/$NAME.linkmap.txt";; esac
   ( dotnet publish "$WORK/$SRC/$proj" -f "$tf" $TFS $AVA_IOS -o "$OUT" -nologo -v:m -clp:Summary -p:UnoEnableHotReload=false $ARGS >"$LOG" 2>&1 </dev/null ) & PUBPID=$!
   ( sleep ${BUILD_TIMEOUT:-1200}; if kill -0 $PUBPID 2>/dev/null; then echo "TIMEOUT: build killed after $(( ${BUILD_TIMEOUT:-1200} / 60 )) minutes" >> "$LOG"; pkill -TERM -f "$WORK/$SRC"; kill -TERM $PUBPID; fi ) & WDPID=$!
