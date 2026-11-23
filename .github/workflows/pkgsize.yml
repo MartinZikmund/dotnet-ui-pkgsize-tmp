@@ -114,6 +114,8 @@ jobs:
           export PATH="$HOME/dn:$PATH" DOTNET_ROOT="$HOME/dn"
           dotnet workload install ios
       - name: Smoke
+        env:
+          UNO_OVERRIDE: ${{ matrix.override }}
         run: |
           echo '${{ matrix.cases }}' | tr '|' '\n' | while read -r name args; do
             [ -z "$name" ] && continue

@@ -7,6 +7,20 @@ ROOT="${PKG_ROOT:-$HOME/pkgsize}"; WORK="$ROOT/work/sim-$NAME"; LOGS="$ROOT/logs
 rsync -a --delete --exclude bin --exclude obj "$ROOT/src/$TFM/UnoApp/" "$WORK/UnoApp/"
 printf '<Project>\n  <Import Project="%s/scripts/diag-late.targets" />\n</Project>\n' "$ROOT" > "$WORK/UnoApp/Directory.Build.targets"
 ARCH=arm64; [ "$(uname -m)" = x86_64 ] && ARCH=x64
+# Framework override (UNO_OVERRIDE=<folder of overrides/$TFM>): same replacement as mac-run.sh, for the simulator build.
+if [ -n "${UNO_OVERRIDE:-}" ]; then
+  OVR="$ROOT/overrides/$TFM/$UNO_OVERRIDE"; NP="${NUGET_PACKAGES:-$HOME/.nuget/packages}"
+  dotnet restore "$WORK/UnoApp/UnoApp/UnoApp.csproj" -r "iossimulator-$ARCH" -p:TargetFrameworks="$TFM.0-ios" -nologo -v:m > "$LOGS/$NAME.override-restore.log" 2>&1 </dev/null
+  for d in "$NP"/uno.winui/*/lib/"$TFM.0"; do
+    for f in "$OVR"/*.dll; do
+      b=$(basename "$f")
+      if [ -f "$d/$b" ]; then
+        echo "override: $d/$b $(stat -f%z "$d/$b") -> $(stat -f%z "$f")" | tee -a "$LOGS/$NAME.result.txt"
+        cp "$f" "$d/$b"; rm -f "$d/${b%.dll}.pdb"
+      fi
+    done
+  done
+fi
 START=$(date +%s)
 # shellcheck disable=SC2068
 dotnet build "$WORK/UnoApp/UnoApp/UnoApp.csproj" -c Release -f "$TFM.0-ios" -r "iossimulator-$ARCH" -p:TargetFrameworks="$TFM.0-ios" \
