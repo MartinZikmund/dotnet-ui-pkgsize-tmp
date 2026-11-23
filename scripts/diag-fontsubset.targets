@@ -1,0 +1,11 @@
+<Project>
+  <!-- Ship one OpenSans set: keep the 12 normal-width static faces, drop the 24 Condensed/SemiCondensed ones and the duplicate variable font -->
+  <Target Name="_DiagOpenSansSubset" AfterTargets="_UnoAddLibraryAssets">
+    <ItemGroup>
+      <_DiagFontToRemove Include="@(_AllChildProjectItemsWithTargetPath)"
+                         Condition="'%(Extension)' == '.ttf' and ($([System.String]::Copy('%(Filename)').Contains('Condensed')) or '%(Filename)' == 'OpenSans')" />
+      <_AllChildProjectItemsWithTargetPath Remove="@(_DiagFontToRemove)" />
+    </ItemGroup>
+    <Message Importance="high" Text="_DiagOpenSansSubset removed @(_DiagFontToRemove->Count()) font files" />
+  </Target>
+</Project>
