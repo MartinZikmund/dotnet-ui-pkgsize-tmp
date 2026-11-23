@@ -1,0 +1,8 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="AvaApp.Views.MainView">
+  <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="8">
+    <TextBlock x:Name="CounterText" Text="Hello!" HorizontalAlignment="Center" />
+    <Button Content="Click me" Click="OnClick" HorizontalAlignment="Center" />
+  </StackPanel>
+</UserControl>

@@ -1,0 +1,102 @@
+name: package-size
+
+on:
+  workflow_dispatch:
+    inputs:
+      only:
+        description: 'Optional space-separated case ids to run (default: all)'
+        required: false
+        default: ''
+  push:
+    branches: [main]
+    paths: ['scripts/**', 'src/**', '.github/workflows/**']
+
+env:
+  DOTNET_NOLOGO: '1'
+  DOTNET_CLI_TELEMETRY_OPTOUT: '1'
+  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: '1'
+  MSBUILDDISABLENODEREUSE: '1'
+  SDK_NET10: '10.0.404'
+  SDK_NET11: '11.0.100'
+
+jobs:
+  apple:
+    name: ${{ matrix.tfm }} ${{ matrix.lane }}
+    runs-on: xcode-27   # macOS + Xcode 27.x (public preview image); .NET 10.0.4xx/11.0.1xx iOS packs bind the 27.2 SDK
+    timeout-minutes: 330
+    strategy:
+      fail-fast: false
+      matrix:
+        tfm: [net11, net10]
+        lane: [maui-ios, uno-ios, ava-ios, maui-maccatalyst, uno-macos, ava-macos]
+    env:
+      PKG_ROOT: ${{ github.workspace }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Runner and Xcode
+        run: |
+          sw_vers; uname -m; sysctl -n hw.ncpu; df -h "$HOME" | tail -1
+          ls -d /Applications/Xcode*.app
+          XC=/Applications/Xcode_27.2.app   # matches the 27.2 iOS/Mac Catalyst workload packs
+          [ -d "$XC" ] || XC=$(ls -d /Applications/Xcode_*.app | grep -E '/Xcode_[0-9][0-9.]*\.app$' | grep -v beta | sort -V | tail -1)
+          echo "DEVELOPER_DIR=$XC/Contents/Developer" >> "$GITHUB_ENV"
+          echo "Selected $XC"; DEVELOPER_DIR="$XC/Contents/Developer" xcodebuild -version
+      - name: Install .NET SDK and workloads
+        run: |
+          V=$SDK_NET10; [ "${{ matrix.tfm }}" = net11 ] && V=$SDK_NET11
+          curl -sSL https://dot.net/v1/dotnet-install.sh -o "$RUNNER_TEMP/dotnet-install.sh"
+          bash "$RUNNER_TEMP/dotnet-install.sh" --version "$V" --install-dir "$HOME/dn" --no-path
+          echo "$HOME/dn" >> "$GITHUB_PATH"; echo "DOTNET_ROOT=$HOME/dn" >> "$GITHUB_ENV"
+          export PATH="$HOME/dn:$PATH" DOTNET_ROOT="$HOME/dn"
+          dotnet --version
+          case "${{ matrix.lane }}" in
+            maui-*) dotnet workload install maui-ios maui-maccatalyst ;;
+            *-ios)  dotnet workload install ios ;;
+            *)      echo "desktop lane: no workload needed" ;;
+          esac
+          dotnet workload list
+      - name: Build lane
+        run: |
+          lane="${{ matrix.lane }}"; fw="${lane%%-*}"; grp="${lane#*-}"
+          bash scripts/mac-run.sh "${{ matrix.tfm }}" "$fw" "$grp" ${{ github.event.inputs.only }}
+      - name: Upload results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: apple-${{ matrix.tfm }}-${{ matrix.lane }}
+          path: |
+            results/
+            logs/
+          if-no-files-found: warn
+
+  linux:
+    name: ${{ matrix.tfm }} ${{ matrix.fw }} linux nativeaot
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        tfm: [net11, net10]
+        fw: [uno, ava]
+    env:
+      PKG_ROOT: ${{ github.workspace }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install .NET SDK
+        run: |
+          V=$SDK_NET10; [ "${{ matrix.tfm }}" = net11 ] && V=$SDK_NET11
+          curl -sSL https://dot.net/v1/dotnet-install.sh -o "$RUNNER_TEMP/dotnet-install.sh"
+          bash "$RUNNER_TEMP/dotnet-install.sh" --version "$V" --install-dir "$HOME/dn" --no-path
+          echo "$HOME/dn" >> "$GITHUB_PATH"; echo "DOTNET_ROOT=$HOME/dn" >> "$GITHUB_ENV"
+          clang --version | head -1; dpkg -l zlib1g-dev | tail -1
+      - name: Build
+        run: bash scripts/linux-run.sh "${{ matrix.tfm }}" "${{ matrix.fw }}"
+      - name: Upload results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-${{ matrix.tfm }}-${{ matrix.fw }}
+          path: |
+            results/
+            logs/
+          if-no-files-found: warn
