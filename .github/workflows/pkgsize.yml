@@ -15,6 +15,10 @@ on:
         description: 'Optional space-separated case ids to run (default: all)'
         required: false
         default: ''
+      timeout:
+        description: 'Per-build cap in seconds'
+        required: false
+        default: '1200'
 
 env:
   DOTNET_NOLOGO: '1'
@@ -35,6 +39,7 @@ jobs:
         include: ${{ fromJSON(github.event.inputs.apple) }}
     env:
       PKG_ROOT: ${{ github.workspace }}
+      BUILD_TIMEOUT: ${{ github.event.inputs.timeout || '1200' }}
     steps:
       - uses: actions/checkout@v4
       - name: Runner and Xcode

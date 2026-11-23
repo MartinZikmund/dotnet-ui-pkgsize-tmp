@@ -73,12 +73,12 @@ cases_$GROUP | while IFS='|' read -r ID TARGET ARGS; do
   find "$WORK/$SRC" -type d \( -name bin -o -name obj \) -prune -exec rm -rf {} + 2>/dev/null
   rm -rf "$OUT"
   START=$(date +%s)
-  # 20-minute cap per build, so a pathological ILLink/ILC run can't wedge the lane
+  # per-build cap (default 20 min, BUILD_TIMEOUT seconds), so a pathological ILLink/ILC run can't wedge the lane
   # shellcheck disable=SC2086
   # Avalonia: enable NativeAOT on the head only (HeadPublishAot in the iOS csproj), not on the class library
   [ "$FW" = ava ] && [ "$GROUP" = ios ] && ARGS=$(echo "$ARGS" | sed 's/-p:PublishAot=true/-p:HeadPublishAot=true/')
   ( dotnet publish "$WORK/$SRC/$proj" -f "$tf" $TFS $AVA_IOS -o "$OUT" -nologo -v:m -clp:Summary -p:UnoEnableHotReload=false $ARGS >"$LOG" 2>&1 </dev/null ) & PUBPID=$!
-  ( sleep 1200; if kill -0 $PUBPID 2>/dev/null; then echo "TIMEOUT: build killed after 20 minutes" >> "$LOG"; pkill -TERM -f "$WORK/$SRC"; kill -TERM $PUBPID; fi ) & WDPID=$!
+  ( sleep ${BUILD_TIMEOUT:-1200}; if kill -0 $PUBPID 2>/dev/null; then echo "TIMEOUT: build killed after $(( ${BUILD_TIMEOUT:-1200} / 60 )) minutes" >> "$LOG"; pkill -TERM -f "$WORK/$SRC"; kill -TERM $PUBPID; fi ) & WDPID=$!
   wait $PUBPID; CODE=$?; kill $WDPID 2>/dev/null; wait $WDPID 2>/dev/null
   SECS=$(( $(date +%s) - START ))
   STATUS=fail; PKG=""; PKGB=0; INST=0; EXTRA=""; ERR=""
