@@ -25,7 +25,7 @@ START=$(date +%s)
 # shellcheck disable=SC2068
 dotnet build "$WORK/UnoApp/UnoApp/UnoApp.csproj" -c Release -f "$TFM.0-ios" -r "iossimulator-$ARCH" -p:TargetFrameworks="$TFM.0-ios" \
   -p:UnoEnableHotReload=false -p:CustomAfterMicrosoftCommonTargets="$ROOT/scripts/diag.targets" -nologo -v:m -clp:Summary $@ > "$LOGS/$NAME.build.log" 2>&1
-CODE=$?; echo "build exit=$CODE secs=$(( $(date +%s) - START ))" | tee "$LOGS/$NAME.result.txt"
+CODE=$?; echo "build exit=$CODE secs=$(( $(date +%s) - START ))" | tee -a "$LOGS/$NAME.result.txt"
 [ $CODE -ne 0 ] && { tail -20 "$LOGS/$NAME.build.log"; exit 0; }
 APP=$(find "$WORK" -name "*.app" -type d -path "*iossimulator*" -not -path "*/obj/*" -not -path "*.app/*" | head -1)
 echo "app=$APP bytes=$(find "$APP" -type f -exec stat -f%z {} + | awk '{s+=$1} END {print s}')" | tee -a "$LOGS/$NAME.result.txt"
@@ -44,7 +44,7 @@ T0=$(python3 -c 'import time; print(time.time())')
 xcrun simctl launch --stdout="$LOGS/$NAME.stdout.txt" --stderr="$LOGS/$NAME.stderr.txt" "$UDID" "$BID" 2>&1 | tee -a "$LOGS/$NAME.result.txt"
 for s in 4 10 25; do
   sleep $(( s == 4 ? 4 : s == 10 ? 6 : 15 ))
-  xcrun simctl io "$UDID" screenshot --type=png "$LOGS/$NAME.t$s.png" >> "$LOGS/$NAME.result.txt" 2>&1
+  xcrun simctl io "$UDID" screenshot --type=png "$LOGS/$NAME.t$s.png" >> "$LOGS/$NAME.shot.log" 2>&1     || xcrun simctl io "$UDID" screenshot --type=png --display=1 "$LOGS/$NAME.t$s.png" >> "$LOGS/$NAME.result.txt" 2>&1
   if xcrun simctl spawn "$UDID" launchctl list 2>/dev/null | grep -q "$BID"; then echo "t+${s}s alive" | tee -a "$LOGS/$NAME.result.txt"; else echo "t+${s}s NOT RUNNING" | tee -a "$LOGS/$NAME.result.txt"; fi
 done
 xcrun simctl terminate "$UDID" "$BID" 2>/dev/null
