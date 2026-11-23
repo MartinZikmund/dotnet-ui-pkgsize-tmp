@@ -6,6 +6,8 @@ set -uo pipefail
 TFM="$1"; FW="$2"; GROUP="$3"; shift 3; ONLY="${*:-}"
 TV="$TFM.0"; LANE="$TFM-$FW-$GROUP"
 ROOT="${PKG_ROOT:-$HOME/pkgsize}"; WORK="$ROOT/work/$LANE"; OUTROOT="$ROOT/out/$LANE"; LOGS="$ROOT/logs/$LANE"; RES="$ROOT/results/$LANE.jsonl"
+# ILFIX=1: keep WebView2Aot/DirectNAot away from ILLink (Uno desktop trim hang workaround)
+if [ "${ILFIX:-0}" = "1" ]; then export CustomAfterMicrosoftCommonTargets="$(cd "$(dirname "$0")" && pwd)/HideWebView2FromILLink.targets"; fi
 mkdir -p "$WORK" "$OUTROOT" "$LOGS" "$ROOT/results"
 case "$FW" in uno) SRC=UnoApp;; maui) SRC=MauiApp1;; ava) SRC=AvaApp;; esac
 rsync -a --delete --exclude bin --exclude obj "$ROOT/src/$TFM/$SRC/" "$WORK/$SRC/"

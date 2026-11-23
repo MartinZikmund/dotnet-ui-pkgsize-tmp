@@ -15,6 +15,10 @@ on:
         description: 'Optional space-separated case ids to run (default: all)'
         required: false
         default: ''
+      ilfix:
+        description: 'Set 1 to hide WebView2Aot from ILLink (Uno desktop trim workaround)'
+        required: false
+        default: '0'
       timeout:
         description: 'Per-build cap in seconds'
         required: false
@@ -40,6 +44,7 @@ jobs:
     env:
       PKG_ROOT: ${{ github.workspace }}
       BUILD_TIMEOUT: ${{ github.event.inputs.timeout || '1200' }}
+      ILFIX: ${{ github.event.inputs.ilfix || '0' }}
     steps:
       - uses: actions/checkout@v4
       - name: Runner and Xcode

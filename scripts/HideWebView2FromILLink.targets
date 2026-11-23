@@ -1,0 +1,10 @@
+<Project>
+  <!-- Experiment: keep WebView2Aot/DirectNAot (already left out of the output) away from ILLink's reference set too -->
+  <Target Name="ExpHideWebView2FromILLink" AfterTargets="PrepareForILLink" BeforeTargets="_RunILLink">
+    <ItemGroup>
+      <_ExpHidden Include="@(ReferencePath)" Condition="'%(Filename)' == 'WebView2' or '%(Filename)' == 'DirectN' or '%(Filename)' == 'DirectN.Extensions'" />
+      <ReferencePath Remove="@(_ExpHidden)" />
+    </ItemGroup>
+    <Message Importance="high" Text="ExpHideWebView2FromILLink: hid @(_ExpHidden->Count()) assemblies from ILLink" />
+  </Target>
+</Project>
