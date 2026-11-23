@@ -1,0 +1,30 @@
+<Project>
+  <!-- Size-investigation knobs; inert unless a Diag* property is set. Imported through CustomAfterMicrosoftCommonTargets. -->
+  <ItemGroup Condition="'$(DiagLinkMap)' != ''">
+    <_CustomLinkFlags Include="-Wl,-map,$(DiagLinkMap)" />
+  </ItemGroup>
+  <PropertyGroup Condition="'$(DiagR2RExtraArgs)' != ''">
+    <PublishReadyToRunCrossgen2ExtraArgs Condition="'$(PublishReadyToRunCrossgen2ExtraArgs)' != ''">$(PublishReadyToRunCrossgen2ExtraArgs);$(DiagR2RExtraArgs.Replace('+', ';'))</PublishReadyToRunCrossgen2ExtraArgs>
+    <PublishReadyToRunCrossgen2ExtraArgs Condition="'$(PublishReadyToRunCrossgen2ExtraArgs)' == ''">$(DiagR2RExtraArgs.Replace('+', ';'))</PublishReadyToRunCrossgen2ExtraArgs>
+  </PropertyGroup>
+  <ItemGroup Condition="'$(DiagR2RExclude)' != ''">
+    <PublishReadyToRunExclude Include="$(DiagR2RExclude.Replace('+', ';'))" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(DiagR2RRoots)' != ''">
+    <PublishReadyToRunCompositeRoots Include="$(DiagR2RRoots.Replace('+', ';'))" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(DiagR2RPartial)' != ''">
+    <PublishReadyToRunPartialAssemblies Include="$(DiagR2RPartial.Replace('+', ';'))" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(DiagR2RCompositeExclusions)' != ''">
+    <PublishReadyToRunCompositeExclusions Include="$(DiagR2RCompositeExclusions.Replace('+', ';'))" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(DiagTrimmerRootAssembly)' != ''">
+    <TrimmerRootAssembly Include="$(DiagTrimmerRootAssembly.Replace('+', ';'))" />
+  </ItemGroup>
+  <!-- Optionally no-op the Uno NativeAOT descriptor generation, to measure what it roots -->
+  <Import Project="diag-nodesc.targets" Condition="'$(DiagNoUnoDescriptors)' == 'true'" />
+  <Target Name="_DiagDumpItems" BeforeTargets="_RunILLink" Condition="'$(DiagDumpFile)' != ''">
+    <WriteLinesToFile File="$(DiagDumpFile)" Overwrite="true" Lines="TrimMode=$(TrimMode);PublishTrimmed=$(PublishTrimmed);_LinkMode=$(_LinkMode);PublishReadyToRun=$(PublishReadyToRun);PublishReadyToRunCrossgen2ExtraArgs=$(PublishReadyToRunCrossgen2ExtraArgs);UnoXamlResourcesTrimming=$(UnoXamlResourcesTrimming);-- TrimmerRootDescriptor;@(TrimmerRootDescriptor);-- TrimmerRootAssembly;@(TrimmerRootAssembly->'%(Identity) [%(RootMode)]');-- _TrimmerFeatureSettings;@(_TrimmerFeatureSettings->'%(Identity)=%(Value)');-- RuntimeHostConfigurationOption;@(RuntimeHostConfigurationOption->'%(Identity)=%(Value) trim=%(Trim)');-- ManagedAssemblyToLink;@(ManagedAssemblyToLink->'%(Filename)%(Extension) TrimMode=%(TrimMode) IsTrimmable=%(IsTrimmable)');-- _ExtraTrimmerArgs;$(_ExtraTrimmerArgs)" />
+  </Target>
+</Project>

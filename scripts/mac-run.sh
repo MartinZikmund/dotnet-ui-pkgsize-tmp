@@ -35,6 +35,19 @@ cases_ios() {
   echo "coreclr|ios-arm64|-c Release -r ios-arm64 -p:UseMonoRuntime=false $NOSIGN"
   echo "nativeaot|ios-arm64|-c Release -r ios-arm64 -p:PublishAot=true $NOSIGN"
 }
+# Size-investigation cases: run only when named explicitly. Knobs live in scripts/diag.targets ('+' separates list entries).
+X="-p:CustomAfterMicrosoftCommonTargets=$ROOT/scripts/diag.targets"
+REL="-c Release -r ios-arm64 $NOSIGN"
+cases_ios_x() {
+  echo "diag-r2r|ios-arm64|$REL $X"
+  echo "diag-r2rmap|ios-arm64|$REL $X -p:DiagR2RExtraArgs=--map+--mapcsv"
+  echo "diag-naot|ios-arm64|$REL $X -p:PublishAot=true -p:IlcGenerateMstatFile=true -p:IlcGenerateDgmlFile=true -p:IlcGenerateMapFile=true"
+  echo "x-r2r-off|ios-arm64|$REL $X -p:PublishReadyToRun=false"
+  echo "x-xamltrim|ios-arm64|$REL $X -p:UnoXamlResourcesTrimming=true"
+  echo "x-xamltrim-trimfull|ios-arm64|$REL $X -p:UnoXamlResourcesTrimming=true -p:TrimMode=full"
+  echo "x-naot-xamltrim|ios-arm64|$REL $X -p:PublishAot=true -p:UnoXamlResourcesTrimming=true"
+  echo "x-naot-nodesc|ios-arm64|$REL $X -p:PublishAot=true -p:DiagNoUnoDescriptors=true"
+}
 cases_maccatalyst() {
   echo "debug|maccatalyst-arm64|-c Debug -r maccatalyst-arm64 $NOSIGN"
   echo "release-default|maccatalyst-arm64|-c Release -r maccatalyst-arm64 $NOSIGN"
@@ -67,7 +80,7 @@ zipbytes() { local z; z="$(mktemp -d)/p.zip"; ditto -c -k --sequesterRsrc --keep
 appstore_bytes() { local total=0 sz f; while IFS= read -r -d '' f; do if file -b "$f" | grep -q 'Mach-O'; then sz=$(stat -f%z "$f"); else sz=$(gzip -9 -c "$f" | wc -c | tr -d ' '); fi; total=$((total + sz)); done < <(find "$1" -type f -print0); echo $total; }
 macho_bytes() { local total=0 f; while IFS= read -r -d '' f; do if file -b "$f" | grep -q 'Mach-O'; then total=$((total + $(stat -f%z "$f"))); fi; done < <(find "$1" -type f -print0); echo $total; }
 
-cases_$GROUP | while IFS='|' read -r ID TARGET ARGS; do
+{ cases_$GROUP; if [ -n "$ONLY" ] && [ "$GROUP" = ios ]; then cases_ios_x; fi; } | while IFS='|' read -r ID TARGET ARGS; do
   if [ -n "$ONLY" ] && ! echo " $ONLY " | grep -q " $ID "; then continue; fi
   NAME="$ID--$TARGET"; OUT="$OUTROOT/$NAME"; LOG="$LOGS/$NAME.log"
   find "$WORK/$SRC" -type d \( -name bin -o -name obj \) -prune -exec rm -rf {} + 2>/dev/null
@@ -77,6 +90,8 @@ cases_$GROUP | while IFS='|' read -r ID TARGET ARGS; do
   # shellcheck disable=SC2086
   # Avalonia: enable NativeAOT on the head only (HeadPublishAot in the iOS csproj), not on the class library
   [ "$FW" = ava ] && [ "$GROUP" = ios ] && ARGS=$(echo "$ARGS" | sed 's/-p:PublishAot=true/-p:HeadPublishAot=true/')
+  case "$ID" in diag-*|x-*) ARGS="$ARGS -bl:$LOGS/$NAME.binlog -p:DiagDumpFile=$LOGS/$NAME.props.txt";; esac
+  case "$ID" in diag-r2r) ARGS="$ARGS -p:DiagLinkMap=$LOGS/$NAME.linkmap.txt";; esac
   ( dotnet publish "$WORK/$SRC/$proj" -f "$tf" $TFS $AVA_IOS -o "$OUT" -nologo -v:m -clp:Summary -p:UnoEnableHotReload=false $ARGS >"$LOG" 2>&1 </dev/null ) & PUBPID=$!
   ( sleep ${BUILD_TIMEOUT:-1200}; if kill -0 $PUBPID 2>/dev/null; then echo "TIMEOUT: build killed after $(( ${BUILD_TIMEOUT:-1200} / 60 )) minutes" >> "$LOG"; pkill -TERM -f "$WORK/$SRC"; kill -TERM $PUBPID; fi ) & WDPID=$!
   wait $PUBPID; CODE=$?; kill $WDPID 2>/dev/null; wait $WDPID 2>/dev/null
@@ -111,6 +126,24 @@ cases_$GROUP | while IFS='|' read -r ID TARGET ARGS; do
   printf '{"tfm":"%s","fw":"%s","group":"%s","target":"%s","config":"%s","args":"%s","seconds":%s,"warnings":%s,"ilWarnings":"%s","warningCodes":"%s","status":"%s","package":"%s","packageBytes":%s,"installBytes":%s%s,"error":"%s"}\n' \
     "$TFM" "$FW" "$GROUP" "$TARGET" "$ID" "$ARGS" "$SECS" "${NW:-0}" "${ILW% }" "${WC% }" "$STATUS" "$PKG" "${PKGB:-0}" "${INST:-0}" "$EXTRA" "$ERR" >> "$RES"
   printf '%-7s %-36s %4ss %s\n' "$STATUS" "$NAME" "$SECS" "$( [ "$STATUS" = ok ] && echo "$((PKGB/1024)) KB" || echo "$ERR" )"
+  if [ "$GROUP" = ios ] && [ "$STATUS" = ok ] && [ -n "$APP" ]; then
+    # every file of the bundle: bytes, deflated bytes, M(ach-O)/D(ata), path
+    ( cd "$APP" && find . -type f -print0 | while IFS= read -r -d '' f; do
+        if file -b "$f" | grep -q 'Mach-O'; then k=M; else k=D; fi
+        printf '%s %s %s %s\n' "$(stat -f%z "$f")" "$(gzip -9 -c "$f" | wc -c | tr -d ' ')" "$k" "$f"
+      done | sort -rn ) > "$LOGS/$NAME.files.txt"
+  fi
+  case "$ID" in diag-*)
+    if [ "$STATUS" = ok ] && [ -n "$APP" ]; then
+      EXE="$APP/$(basename "$APP" .app)"
+      { for m in $(awk '$3=="M"{print $4}' "$LOGS/$NAME.files.txt"); do echo "=== $m"; size -m -l "$APP/$m"; otool -L "$APP/$m"; done; echo "=== load commands (main)"; otool -l "$EXE"; } > "$LOGS/$NAME.macho.txt" 2>&1
+      nm -nm "$EXE" > "$LOGS/$NAME.mainexe.nm.txt" 2>&1
+      tar czf "$LOGS/$NAME.app.tar.gz" -C "$(dirname "$APP")" "$(basename "$APP")"
+    fi
+    # intermediate outputs (linked IL, descriptors, rsp, ILC mstat/dgml/map), minus native objects and bundle copies
+    ( cd "$WORK/$SRC" && find . -path '*/obj/*' -type f -exec stat -f'%z %N' {} + | sort -rn > "$LOGS/$NAME.obj.files.txt"
+      find . -path '*/obj/*' -type f ! -name '*.o' ! -name '*.a' ! -name '*.dylib' ! -name '*.ipa' ! -name '*.zip' ! -path '*.app/*' ! -path '*.dSYM/*' ! -path '*.framework/*' -print0 | tar czf "$LOGS/$NAME.obj.tar.gz" --null -T - ) 2>>"$LOG"
+  ;; esac
   # keep a top-files listing of the template-default Release build for the size analysis
   if [ "$STATUS" = ok ] && [ "$ID" = release-default ]; then
     T="${APP:-$OUT}"; find "$T" -type f -exec stat -f'%z %N' {} + 2>/dev/null | sort -rn | head -25 > "$LOGS/$NAME.topfiles.txt"

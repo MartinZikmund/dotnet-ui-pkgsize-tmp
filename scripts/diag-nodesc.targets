@@ -1,0 +1,4 @@
+<Project>
+  <!-- Replaces Uno's NativeAOT descriptor generation (Uno.Bindable / Uno.AttachedProperties) with a no-op, to measure what it roots -->
+  <Target Name="_UnoGenerateLinkerDescriptors" />
+</Project>

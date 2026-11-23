@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       apple:
-        description: 'JSON array of {tfm, lane} Apple jobs'
+        description: 'JSON array of {tfm, lane[, only, tag]} Apple jobs (only = case ids for that job, tag = artifact suffix)'
         required: false
         default: '[{"tfm":"net11","lane":"maui-ios"},{"tfm":"net11","lane":"uno-ios"},{"tfm":"net11","lane":"ava-ios"},{"tfm":"net11","lane":"maui-maccatalyst"},{"tfm":"net11","lane":"uno-macos"},{"tfm":"net11","lane":"ava-macos"},{"tfm":"net10","lane":"maui-ios"},{"tfm":"net10","lane":"uno-ios"},{"tfm":"net10","lane":"ava-ios"},{"tfm":"net10","lane":"maui-maccatalyst"},{"tfm":"net10","lane":"uno-macos"},{"tfm":"net10","lane":"ava-macos"}]'
       linux:
@@ -30,7 +30,7 @@ env:
 
 jobs:
   apple:
-    name: ${{ matrix.tfm }} ${{ matrix.lane }}
+    name: ${{ matrix.tfm }} ${{ matrix.lane }} ${{ matrix.tag }}
     runs-on: xcode-27   # macOS + Xcode 27.x (public preview image); .NET 10.0.4xx/11.0.1xx iOS packs bind the 27.2 SDK
     timeout-minutes: 330
     strategy:
@@ -67,12 +67,12 @@ jobs:
       - name: Build lane
         run: |
           lane="${{ matrix.lane }}"; fw="${lane%%-*}"; grp="${lane#*-}"
-          bash scripts/mac-run.sh "${{ matrix.tfm }}" "$fw" "$grp" ${{ github.event.inputs.only }}
+          bash scripts/mac-run.sh "${{ matrix.tfm }}" "$fw" "$grp" ${{ matrix.only || github.event.inputs.only }}
       - name: Upload results
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: apple-${{ matrix.tfm }}-${{ matrix.lane }}
+          name: apple-${{ matrix.tfm }}-${{ matrix.lane }}${{ matrix.tag && format('-{0}', matrix.tag) || '' }}
           path: |
             results/
             logs/
