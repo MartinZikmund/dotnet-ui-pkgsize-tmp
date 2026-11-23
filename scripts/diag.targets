@@ -27,6 +27,9 @@
     <RuntimeHostConfigurationOption Include="Is_System_Dynamic_DynamicObject_Available" Value="false" Trim="true" />
     <RuntimeHostConfigurationOption Include="Is_System_Dynamic_ExpandoObject_Available" Value="false" Trim="true" />
   </ItemGroup>
+  <ItemGroup Condition="'$(DiagTrimmable)' != ''">
+    <TrimmableAssembly Include="$(DiagTrimmable.Replace('+', ';'))" />
+  </ItemGroup>
   <Target Name="_DiagDumpItems" BeforeTargets="_RunILLink" Condition="'$(DiagDumpFile)' != ''">
     <WriteLinesToFile File="$(DiagDumpFile)" Overwrite="true" Lines="TrimMode=$(TrimMode);PublishTrimmed=$(PublishTrimmed);_LinkMode=$(_LinkMode);PublishReadyToRun=$(PublishReadyToRun);PublishReadyToRunCrossgen2ExtraArgs=$(PublishReadyToRunCrossgen2ExtraArgs);UnoXamlResourcesTrimming=$(UnoXamlResourcesTrimming);-- TrimmerRootDescriptor;@(TrimmerRootDescriptor);-- TrimmerRootAssembly;@(TrimmerRootAssembly->'%(Identity) [%(RootMode)]');-- _TrimmerFeatureSettings;@(_TrimmerFeatureSettings->'%(Identity)=%(Value)');-- RuntimeHostConfigurationOption;@(RuntimeHostConfigurationOption->'%(Identity)=%(Value) trim=%(Trim)');-- ManagedAssemblyToLink;@(ManagedAssemblyToLink->'%(Filename)%(Extension) TrimMode=%(TrimMode) IsTrimmable=%(IsTrimmable)');-- _ExtraTrimmerArgs;$(_ExtraTrimmerArgs)" />
   </Target>

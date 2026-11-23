@@ -75,6 +75,7 @@ cases_ios_x() {
   echo "x-combo-c|ios-arm64|$REL $X $XT -p:DiagR2RExclude=Uno.UI.FluentTheme.dll+Uno.UI.dll -p:DiagFontSubset=true"
   echo "x-lowrisk|ios-arm64|$REL $X -p:DynamicCodeSupport=false -p:DiagR2RExclude=Uno.UI.FluentTheme.dll -p:DiagFontSubset=true"
   echo "x-fontsubset|ios-arm64|$REL $X -p:DiagFontSubset=true"
+  echo "x-xamltrim-apptrim|ios-arm64|$REL $X -p:UnoXamlResourcesTrimming=true -p:DiagTrimmable=UnoApp"
   echo "x-dynhints|ios-arm64|$REL $X -p:DiagDynHints=true"
   echo "x-dynhints-nomedi|ios-arm64|$REL $X -p:DiagDynHints=true -p:UnoDisableMEDITrimmingWorkaround=true"
   echo "diag-naot|ios-arm64|$REL $X -p:PublishAot=true -p:IlcGenerateMstatFile=true -p:IlcGenerateDgmlFile=true -p:IlcGenerateMapFile=true"
